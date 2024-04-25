@@ -303,6 +303,7 @@ class Mag(ProcessInstrument):
         """Perform MAG specific processing."""
         print(f"Processing MAG {self.data_level}")
         file_paths = self.download_dependencies()
+        file_paths = [1,2,3]
 
         if self.data_level == "l1a":
             # File path is expected output file path
