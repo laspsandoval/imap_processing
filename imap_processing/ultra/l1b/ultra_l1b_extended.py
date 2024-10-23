@@ -773,7 +773,7 @@ def determine_species_ssd(
         flat_data = np.frombuffer(f.read(), dtype=np.uint8).reshape((2048, 4096))
 
     for i in range(energy.size):
-        if int(energy[i]) < 0 or int(ctof[i]) > 4096 - 1:
+        if int(energy[i]) < 0 or int(ctof[i]) > 2047:
             species_bins[i] = 0
         elif path_length[i] < get_image_params("PATHSTEEPTHRESH"):
             species_bins[i] = steep_data[int(2047 - ctof[i]), int(energy[i])]
