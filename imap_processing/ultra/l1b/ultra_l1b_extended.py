@@ -1,8 +1,8 @@
 """Calculates Extended Raw Events for ULTRA L1b."""
 
+import gzip
 import logging
 from enum import Enum
-import gzip
 from typing import ClassVar
 
 import numpy as np
@@ -709,10 +709,11 @@ def determine_species_pulse_height(
     species_bins : np.array
         Species bin.
     """
+    # PH event TOF normalization to Z axis.
     ctof = get_ctof(tof, path_length)
     species_bins = np.zeros(energy.shape, dtype=np.uint8)
 
-    with gzip.open(BASE_PATH / 'phxtof.bin.gz', 'rb') as f:
+    with gzip.open(BASE_PATH / "phxtof.bin.gz", "rb") as f:
         ph_data = np.frombuffer(f.read(), dtype=np.uint8).reshape((2048, 4096))
 
     for i in range(energy.size):
@@ -754,20 +755,31 @@ def determine_species_ssd(
 
     Returns
     -------
-    bin : np.ndarray
+    species_bins : np.ndarray
         Species bin.
     """
     # SSD event TOF normalization to Z axis
     ctof = get_ctof(tof, path_length)
 
-    bin = np.zeros(len(ctof))  # placeholder
+    species_bins = np.zeros(energy.shape, dtype=np.uint8)
 
-    # TODO: get these lookup tables
-    # if r < get_image_params("PathSteepThresh"):
-    #     # bin = ExTOFSpeciesSteep[energy, ctof]
-    # elif r < get_image_params("PathMediumThresh"):
-    #     # bin = ExTOFSpeciesMedium[energy, ctof]
-    # else:
-    #     # bin = ExTOFSpeciesFlat[energy, ctof]
+    # xaxis - energy (4096)
+    # yaxis - ctof (2048)
+    with gzip.open(BASE_PATH / "extof_steep.bin.gz", "rb") as f:
+        steep_data = np.frombuffer(f.read(), dtype=np.uint8).reshape((2048, 4096))
+    with gzip.open(BASE_PATH / "extof_medium.bin.gz", "rb") as f:
+        medium_data = np.frombuffer(f.read(), dtype=np.uint8).reshape((2048, 4096))
+    with gzip.open(BASE_PATH / "extof_flat.bin.gz", "rb") as f:
+        flat_data = np.frombuffer(f.read(), dtype=np.uint8).reshape((2048, 4096))
 
-    return bin
+    for i in range(energy.size):
+        if int(energy[i]) < 0 or int(ctof[i]) > 4096 - 1:
+            species_bins[i] = 0
+        elif path_length[i] < get_image_params("PATHSTEEPTHRESH"):
+            species_bins[i] = steep_data[int(2047 - ctof[i]), int(energy[i])]
+        elif path_length[i] < get_image_params("PATHMEDIUMTHRESH"):
+            species_bins[i] = medium_data[int(2047 - ctof[i]), int(energy[i])]
+        else:
+            species_bins[i] = flat_data[int(2047 - ctof[i]), int(energy[i])]
+
+    return species_bins

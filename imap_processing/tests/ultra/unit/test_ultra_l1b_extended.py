@@ -323,7 +323,9 @@ def test_determine_species_ph(yf_fixture):
         df_ph["r"].astype("float").to_numpy(),
     )
     # TODO: why are some 255?
-    np.testing.assert_allclose(bin, df_ph["ComputedBin"].astype("float"), atol=1e-05, rtol=0)
+    np.testing.assert_allclose(
+        bin, df_ph["ComputedBin"].astype("float"), atol=1e-05, rtol=0
+    )
 
 
 def test_determine_species_ssd(yf_fixture):
@@ -337,5 +339,6 @@ def test_determine_species_ssd(yf_fixture):
         df_ssd["r"].astype("float").to_numpy(),
     )
 
-    # TODO: add in bin values.
-    np.testing.assert_allclose(bin, np.zeros(len(bin)), atol=1e-05, rtol=0)
+    np.testing.assert_allclose(
+        bin, df_ssd["ComputedBin"].astype("float"), atol=1e-05, rtol=0
+    )
