@@ -2,6 +2,7 @@
 
 import logging
 from enum import Enum
+import gzip
 from typing import ClassVar
 
 import numpy as np
@@ -9,6 +10,7 @@ import xarray
 from numpy import ndarray
 from numpy.typing import NDArray
 
+from imap_processing import imap_module_directory
 from imap_processing.ultra.constants import UltraConstants
 from imap_processing.ultra.l1b.lookup_utils import (
     get_back_position,
@@ -17,6 +19,8 @@ from imap_processing.ultra.l1b.lookup_utils import (
     get_norm,
     get_y_adjust,
 )
+
+BASE_PATH = imap_module_directory / "ultra" / "lookup_tables"
 
 logger = logging.getLogger(__name__)
 
@@ -702,17 +706,22 @@ def determine_species_pulse_height(
 
     Returns
     -------
-    bin : np.array
+    species_bins : np.array
         Species bin.
     """
-    # PH event TOF normalization to Z axis
     ctof = get_ctof(tof, path_length)
-    # TODO: need lookup tables
-    # placeholder
-    bin = np.zeros(len(ctof))
-    # bin = PHxTOFSpecies[ctof, energy]
+    species_bins = np.zeros(energy.shape, dtype=np.uint8)
 
-    return bin
+    with gzip.open(BASE_PATH / 'phxtof.bin.gz', 'rb') as f:
+        ph_data = np.frombuffer(f.read(), dtype=np.uint8).reshape((2048, 4096))
+
+    for i in range(energy.size):
+        if int(energy[i]) < 0 or int(ctof[i]) > 4096 - 1:
+            species_bins[i] = 0
+        else:
+            species_bins[i] = ph_data[2047 - int(energy[i]), int(ctof[i])]
+
+    return species_bins
 
 
 def determine_species_ssd(
