@@ -1,16 +1,10 @@
 """Tests Culling for ULTRA L1b."""
 
-import re
-from io import StringIO
-
 import numpy as np
-import pandas as pd
 import pytest
-import spiceypy
 
 from imap_processing import imap_module_directory
 from imap_processing.quality_flags import ImapAttitudeUltraFlags, ImapRatesUltraFlags
-from imap_processing.spice.kernels import ensure_spice
 from imap_processing.ultra.constants import UltraConstants
 from imap_processing.ultra.l1b.ultra_l1b_culling import (
     compare_aux_univ_spin_table,
@@ -119,57 +113,29 @@ def test_compare_aux_univ_spin_table(use_fake_spin_data_for_time, faux_aux_datas
     assert np.all(result == expected)
 
 
-@pytest.mark.external_kernel
-@ensure_spice
-@pytest.mark.use_test_metakernel("imap_ena_sim_metakernel.template")
-def test_with_data(spice_test_data_path):
-    # Import text file.
-    with open(TEST_PATH / "IMAP-Ultra90_20.65_mod.txt") as f:
-        lines = [line for line in f if not line.strip().startswith("###")]
-    clean_text = re.sub(r"[\t ]+", ",", "".join(lines))
-    df = pd.read_csv(StringIO(clean_text), header=None)
-    df.columns = [
-        "tdb",
-        "StartX",
-        "PosYSlit",
-        "StopX",
-        "StopY",
-        "Energy",
-        "Type",
-        "PH",
-        "SpinPhase",
-        "TOF",
-    ]
-    # Add spin column
-    df["spin"] = pd.NA
+def test_flag_spin_data(use_fake_spin_data_for_time):
+    """Tests flag_spin function."""
 
-    # SPICE
-    id_imap_spacecraft = spiceypy.gipool("FRAME_IMAP_SPACECRAFT", 0, 1)
-    ck_path = spice_test_data_path / "sim_1yr_imap_attitude.bc"
-    ck_cover = spiceypy.ckcov(
-        str(ck_path), int(id_imap_spacecraft), True, "INTERVAL", 0, "TDB"
+    use_fake_spin_data_for_time(0, 5 * 15)
+
+    spin_event_counts = {
+        0: 10,  # normal
+        1: 12,  # normal
+        2: 1000,  # high rate
+        3: 11,  # normal
+        4: 9,  # normal
+    }
+
+    spin_number = np.concatenate(
+        [np.full(count, spin) for spin, count in spin_event_counts.items()]
     )
-    # Start and end time of first pointing
-    et_start, et_end = spiceypy.wnfetd(ck_cover, 0)
+    energy = np.full(spin_number.shape, 5.0)
 
-    # Loop through spins in the first pointing
-    # and associate them with the corresponding tdb values.
-    for spin_number in range(int((et_end - et_start) / 15)):
-        spin_start = et_start + spin_number * 15
-        spin_end = spin_start + 15
+    flags, spin, energy_midpoints, threshold = flag_spin(spin_number, energy, 1)
+    highrate_flags = flags[0, :]
 
-        mask = (df["tdb"] >= spin_start) & (df["tdb"] < spin_end)
-        df.loc[mask, "spin"] = spin_number
-
-    import matplotlib
-
-    matplotlib.use("TkAgg")  # Or 'QtAgg' if you have PyQt installed
-    import matplotlib.pyplot as plt
-
-    plt.plot(df["tdb"])
-    plt.xlabel("Index")  # X-axis label (just the row number for now)
-    plt.ylabel("tdb")  # Y-axis label
-    plt.title("TDB Values")
-    plt.grid(True)
-    plt.show()
-    print("hi")
+    assert not (highrate_flags[0] & ImapRatesUltraFlags.HIGHRATES.value)
+    assert not (highrate_flags[1] & ImapRatesUltraFlags.HIGHRATES.value)
+    assert highrate_flags[2] & ImapRatesUltraFlags.HIGHRATES.value
+    assert not (highrate_flags[3] & ImapRatesUltraFlags.HIGHRATES.value)
+    assert not (highrate_flags[4] & ImapRatesUltraFlags.HIGHRATES.value)

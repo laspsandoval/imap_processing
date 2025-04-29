@@ -150,7 +150,7 @@ def flag_spin(
 
     Returns
     -------
-    quality_flags : NDArray
+    quality_flags : NDArray (n_energy_bins, n_spins)
         Quality flags.
     spin : NDArray
         Spin data.
