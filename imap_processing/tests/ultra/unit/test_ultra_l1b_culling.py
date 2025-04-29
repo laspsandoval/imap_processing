@@ -1,11 +1,16 @@
 """Tests Culling for ULTRA L1b."""
 
+import re
+from io import StringIO
+
 import numpy as np
 import pandas as pd
 import pytest
+import spiceypy
 
 from imap_processing import imap_module_directory
 from imap_processing.quality_flags import ImapAttitudeUltraFlags, ImapRatesUltraFlags
+from imap_processing.spice.kernels import ensure_spice
 from imap_processing.ultra.constants import UltraConstants
 from imap_processing.ultra.l1b.ultra_l1b_culling import (
     compare_aux_univ_spin_table,
@@ -114,27 +119,15 @@ def test_compare_aux_univ_spin_table(use_fake_spin_data_for_time, faux_aux_datas
     assert np.all(result == expected)
 
 
-def test_with_data():
-    import re
-
-    data = TEST_PATH / "IMAP-Ultra90_20.65_mod.txt"
-
-    with open(data) as f:
-        lines = f.readlines()
-
-    # Remove lines starting with ###
-    lines = [line for line in lines if not line.strip().startswith("###")]
-
-    # Replace multiple spaces/tabs with a single comma
-    lines = [re.sub(r"[\t ]+", ",", line.strip()) for line in lines]
-
-    # Now read it as a CSV from the cleaned lines
-    from io import StringIO
-
-    clean_text = "\n".join(lines)
+@pytest.mark.external_kernel
+@ensure_spice
+@pytest.mark.use_test_metakernel("imap_ena_sim_metakernel.template")
+def test_with_data(spice_test_data_path):
+    # Import text file.
+    with open(TEST_PATH / "IMAP-Ultra90_20.65_mod.txt") as f:
+        lines = [line for line in f if not line.strip().startswith("###")]
+    clean_text = re.sub(r"[\t ]+", ",", "".join(lines))
     df = pd.read_csv(StringIO(clean_text), header=None)
-
-    # Set your correct column names
     df.columns = [
         "tdb",
         "StartX",
@@ -147,6 +140,27 @@ def test_with_data():
         "SpinPhase",
         "TOF",
     ]
+    # Add spin column
+    df["spin"] = pd.NA
+
+    # SPICE
+    id_imap_spacecraft = spiceypy.gipool("FRAME_IMAP_SPACECRAFT", 0, 1)
+    ck_path = spice_test_data_path / "sim_1yr_imap_attitude.bc"
+    ck_cover = spiceypy.ckcov(
+        str(ck_path), int(id_imap_spacecraft), True, "INTERVAL", 0, "TDB"
+    )
+    # Start and end time of first pointing
+    et_start, et_end = spiceypy.wnfetd(ck_cover, 0)
+
+    # Loop through spins in the first pointing
+    # and associate them with the corresponding tdb values.
+    for spin_number in range(int((et_end - et_start) / 15)):
+        spin_start = et_start + spin_number * 15
+        spin_end = spin_start + 15
+
+        mask = (df["tdb"] >= spin_start) & (df["tdb"] < spin_end)
+        df.loc[mask, "spin"] = spin_number
+
     import matplotlib
 
     matplotlib.use("TkAgg")  # Or 'QtAgg' if you have PyQt installed
