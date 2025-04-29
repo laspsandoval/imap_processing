@@ -115,7 +115,7 @@ def get_n_sigma(count_rates: NDArray, mean_duration: float, sigma: int = 6) -> N
         A 2D histogram array containing the
         count rates per spin at each energy bin.
     mean_duration : float
-        Mean duration of the spins.
+        Mean duration of the spins (seconds).
     sigma : int (default=6)
         The number of sigma.
 
