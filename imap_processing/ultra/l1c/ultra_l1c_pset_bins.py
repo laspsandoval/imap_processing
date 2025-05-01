@@ -123,6 +123,7 @@ def get_spacecraft_histogram(
     return hist, latitude, longitude, n_pix
 
 
+def get_spacecraft_background_rates(
 def get_helio_histogram(
     time: NDArray,
     vhat: NDArray,
@@ -247,8 +248,95 @@ def get_background_rates(
     -----
     This is a placeholder.
     """
-    n_pix = hp.nside2npix(nside)
-    return np.zeros(n_pix)
+    npix = hp.nside2npix(nside)
+    _, energy_midpoints, _ = build_energy_bins()
+    background = np.zeros((npix, len(energy_midpoints)))
+    return background
+
+
+# def get_helio_background_rates(
+#     time: np.ndarray,
+#     background_rates: NDArray,
+#     nside: int = 128,
+#     nested: bool = False,
+# ) -> NDArray:
+#     """
+#     Transform spacecraft-frame background rates into the helio frame.
+#
+#     Parameters
+#     ----------
+#     time : np.ndarray
+#         Median time of pointing in et.
+#     background_rates : np.ndarray
+#         Background rates in the spacecraft (dps) frame (shape: npix).
+#     nside : int, optional
+#         Healpix nside parameter.
+#     nested : bool, optional
+#         Whether Healpix uses nested indexing.
+#
+#     Returns
+#     -------
+#     helio_background : np.ndarray
+#         Background rates in the helio frame (shape: [npix, n_energy_bins]).
+#     """
+#     # Get energy midpoints.
+#     _, energy_midpoints, _ = build_energy_bins()
+#     # Compute number of HEALPix pixels that cover the sphere.
+#     npix = hp.nside2npix(nside)
+#
+#     # The Cartesian state vector representing the position and velocity of the
+#     # IMAP spacecraft.
+#     state = imap_state(time, ref_frame=SpiceFrame.IMAP_DPS)
+#
+#     # Extract the velocity part of the state vector.
+#     spacecraft_velocity = state[3:6]
+#
+#     # Directions of each HEALPix pixel in spacecraft frame.
+#     ra, dec = hp.pix2ang(nside, np.arange(npix), lonlat=True)
+#     # Convert (RA, Dec) angles into 3D unit vectors.
+#     # Each unit vector represents a direction in the sky where the spacecraft observed
+#     # and accumulated exposure time.
+#     unit_dirs = hp.ang2vec(ra, dec, lonlat=True).T  # Shape (N, 3)
+#
+#     # Initialize result
+#     helio_background = np.zeros((npix, len(energy_midpoints)))
+#
+#     for i, energy in enumerate(energy_midpoints):
+#         # Convert the midpoint energy to a velocity (km/s).
+#         # Based on kinetic energy equation: E = 1/2 * m * v^2.
+#         energy_velocity = (
+#             np.sqrt(2 * energy * UltraConstants.KEV_J / UltraConstants.MASS_H) / 1e3
+#         )
+#
+#         # Use Galilean Transform to transform the velocity wrt spacecraft
+#         # to the velocity wrt heliosphere.
+#         # energy_velocity * cartesian -> apply the magnitude of the velocity
+#         # to every position on the grid in the despun grid.
+#         helio_velocity = spacecraft_velocity.reshape(1, 3) + energy_velocity * unit_dirs
+#
+#         # Normalized vectors representing the direction of the heliocentric velocity.
+#         helio_normalized = helio_velocity / np.linalg.norm(helio_velocity, axis=1, keepdims=True)
+#
+#         # Convert Cartesian heliocentric vectors into spherical coordinates.
+#         # Result: azimuth (longitude) and elevation (latitude) in degrees.
+#         helio_spherical = cartesian_to_spherical(helio_normalized)
+#         az, el = helio_spherical[:, 1], helio_spherical[:, 2]
+#
+#         # Convert azimuth/elevation directions to HEALPix pixel indices.
+#         hpix_idx = hp.ang2pix(nside, az, el, nest=nested, lonlat=True)
+#
+#         # Prepare sum and count arrays
+#         rate_sum = np.zeros(npix)
+#         rate_count = np.zeros(npix)
+#
+#         # Accumulate rates and counts per pixel
+#         np.add.at(rate_sum, hpix_idx, background_rates)
+#         np.add.at(rate_count, hpix_idx, 1)
+#
+#         mean_rate = np.true_divide(rate_sum, rate_count)
+#         helio_background[:, i] = mean_rate
+#
+#     return helio_background
 
 
 def get_spacecraft_exposure_times(constant_exposure: pandas.DataFrame) -> NDArray:

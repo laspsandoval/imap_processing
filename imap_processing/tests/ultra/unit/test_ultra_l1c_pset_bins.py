@@ -9,9 +9,9 @@ from imap_processing import imap_module_directory
 from imap_processing.ultra.l1c import ultra_l1c_pset_bins
 from imap_processing.ultra.l1c.ultra_l1c_pset_bins import (
     build_energy_bins,
-    get_background_rates,
     get_helio_exposure_times,
     get_helio_histogram,
+    get_spacecraft_background_rates,
     get_spacecraft_exposure_times,
     get_spacecraft_histogram,
     get_spacecraft_sensitivity,
@@ -122,10 +122,11 @@ def test_get_helio_histogram(monkeypatch, test_data):
     assert np.array_equal(hist_helio, hist_sc)
 
 
-def test_get_background_rates():
+def test_get_spacecraft_background_rates():
     """Tests get_background_rates function."""
-    background_rates = get_background_rates(nside=128)
-    assert background_rates.shape == hp.nside2npix(128)
+    background_rates = get_spacecraft_background_rates(nside=128)
+    _, energy_midpoints, _ = build_energy_bins()
+    assert background_rates.shape == (hp.nside2npix(128), len(energy_midpoints))
 
 
 @pytest.mark.external_test_data
