@@ -42,7 +42,8 @@ def calculate_badtimes(
     badtimes_dataset = create_dataset(filtered_dataset, name, "l1b")
 
     if badtimes_dataset["spin_number"].size == 0:
-        badtimes_dataset["spin_number"] = np.array([FILLVAL_UINT32], dtype="uint32")
+        badtimes_dataset = badtimes_dataset.drop_dims("spin_number")
+        badtimes_dataset = badtimes_dataset.expand_dims(spin_number=[FILLVAL_UINT32])
         badtimes_dataset["spin_start_time"] = np.array(
             [FILLVAL_FLOAT64], dtype="float64"
         )
