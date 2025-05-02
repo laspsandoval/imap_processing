@@ -13,7 +13,6 @@ from imap_processing.ialirt.l0.mag_l0_ialirt_data import (
     Packet3,
 )
 from imap_processing.ialirt.utils.grouping import find_groups
-from imap_processing.ialirt.utils.time import calculate_time
 from imap_processing.mag.l1a.mag_l1a_data import TimeTuple
 from imap_processing.mag.l1b.mag_l1b import (
     calibrate_vector,
@@ -306,20 +305,16 @@ def process_packet(
         f"{accumulated_data['mag_acq_tm_coarse'].max().values}."
     )
 
-    # Note that the fine time second is split into 65535.
-    time_seconds = calculate_time(
-        accumulated_data["mag_acq_tm_coarse"],
-        accumulated_data["mag_acq_tm_fine"],
-        65535,
-    )
+    # Subsecond time conversion specified in 7516-9054 GSW-FSW ICD.
+    # Value of SCLK subseconds, unsigned, (LSB = 1/256 sec)
+    met = accumulated_data["sc_sclk_sec"] + accumulated_data["sc_sclk_sub_sec"] / 256
 
     # Add required parameters.
-    accumulated_data["time_seconds"] = time_seconds
-    sorted_data = accumulated_data.sortby("time_seconds", ascending=True)
-    pkt_counter = get_pkt_counter(sorted_data["mag_status"])
-    sorted_data["pkt_counter"] = pkt_counter
+    accumulated_data["met"] = met
+    pkt_counter = get_pkt_counter(accumulated_data["mag_status"])
+    accumulated_data["pkt_counter"] = pkt_counter
 
-    grouped_data = find_groups(sorted_data, (0, 3), "pkt_counter", "time_seconds")
+    grouped_data = find_groups(accumulated_data, (0, 3), "pkt_counter", "met")
 
     unique_groups = np.unique(grouped_data["group"])
     mag_data = []
@@ -334,6 +329,7 @@ def process_packet(
         ]
 
         if not np.array_equal(pkt_counter, np.arange(4)):
+            print("hi")
             logger.warning(
                 f"Group {group} does not contain all values from 0 to "
                 f"3 without duplicates."
@@ -370,5 +366,5 @@ def process_packet(
         )
 
         mag_data.append({**status_data, **science_data, **time_data})
-
+    print("hi")
     return mag_data

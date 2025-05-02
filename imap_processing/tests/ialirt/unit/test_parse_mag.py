@@ -64,15 +64,19 @@ def mag_test_data():
 @pytest.fixture
 def xarray_data(binary_packet_path, xtce_mag_path):
     """Create xarray data for multiple packets."""
-    apid = 1001
-
-    xarray_data = tuple(
-        packet_file_to_datasets(packet, xtce_mag_path, use_derived_value=False)[apid]
-        for packet in binary_packet_path
+    apid = 478
+    packet_path = (
+        imap_module_directory / "tests" / "ialirt" / "data" / "l0" / "apid_478.bin"
+    )
+    xtce_ialirt_path = (
+        imap_module_directory / "ialirt" / "packet_definitions" / "ialirt.xml"
     )
 
-    merged_xarray_data = xr.concat(xarray_data, dim="epoch")
-    return merged_xarray_data
+    xarray_data = packet_file_to_datasets(
+        packet_path, xtce_ialirt_path, use_derived_value=False
+    )[apid]
+
+    return xarray_data
 
 
 @pytest.fixture
