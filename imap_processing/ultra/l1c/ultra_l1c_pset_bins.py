@@ -254,6 +254,32 @@ def get_background_rates(
     return background
 
 
+def get_helio_background_rates(
+    nside: int = 128,
+) -> NDArray:
+    """
+    Calculate background rates.
+
+    Parameters
+    ----------
+    nside : int, optional
+        The nside parameter of the Healpix tessellation (default is 128).
+
+    Returns
+    -------
+    background_rates : np.ndarray
+        Array of background rates.
+
+    Notes
+    -----
+    This is a placeholder.
+    """
+    npix = hp.nside2npix(nside)
+    _, energy_midpoints, _ = build_energy_bins()
+    background = np.zeros((npix, len(energy_midpoints)))
+    return background
+
+
 # def get_helio_background_rates(
 #     time: np.ndarray,
 #     background_rates: NDArray,
