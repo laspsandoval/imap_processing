@@ -214,3 +214,26 @@ def test_get_spacecraft_sensitivity():
     # Check that out-of-bounds energy returns all NaNs
     result = grid_sensitivity(df_efficiencies, df_geometric_function, 2.5)
     assert np.isnan(result).all()
+
+
+def test_get_helio_histogram(monkeypatch, test_data):
+    """Test helio histogram is equal to spacecraft histogram with zero velocity."""
+    v, energy = test_data
+
+    # Patch imap_state to return zero velocity
+    monkeypatch.setattr(ultra_l1c_pset_bins, "imap_state", mock_imap_state)
+
+    energy_bin_edges, _, _ = build_energy_bins()
+    subset_energy_bin_edges = energy_bin_edges[:3]  # Just test a few bins for speed
+
+    mid_time = 829526469.185627  # Arbitrary test time
+
+    hist_helio, _, _, _ = get_helio_histogram(
+        mid_time, v, energy, subset_energy_bin_edges, nside=1
+    )
+
+    hist_sc, _, _, _ = get_spacecraft_histogram(
+        v, energy, subset_energy_bin_edges, nside=1
+    )
+
+    np.testing.assert_allclose(hist_helio, hist_sc, atol=1e-5)
