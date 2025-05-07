@@ -7,6 +7,10 @@ import pytest
 from imap_processing import imap_module_directory
 from imap_processing.cdf.utils import load_cdf
 from imap_processing.ultra.constants import UltraConstants
+from imap_processing.cdf.utils import load_cdf
+from imap_processing import imap_module_directory
+
+TEST_PATH = imap_module_directory / "tests" / "ultra" / "data" / "l1"
 
 TEST_PATH = imap_module_directory / "tests" / "ultra" / "data" / "l1"
 
