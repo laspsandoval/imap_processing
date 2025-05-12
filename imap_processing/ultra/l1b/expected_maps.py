@@ -13,6 +13,8 @@ import healpy as hp
 
 from imap_processing.spice.time import sce2met_ns
 
+SC_ID = -43
+
 
 def plot_all_ultra_counts(input_dir: Path, output_dir: Path):
     """
@@ -82,31 +84,36 @@ def get_ck_coverage_pairs(ck_file: Path) -> np.ndarray:
     return cov_pairs, num_intervals
 
 
-def generate_pointing_tables(ck_file: Path):
+def generate_repoint_table(ck_file: Path) -> pd.DataFrame:
     """
-    Generate pointing table using spice data.
+    Generate repoint table with SCLK seconds, subseconds, and UTC times.
     """
     cov_pairs, _ = get_ck_coverage_pairs(ck_file)
     rp_dict = defaultdict(list)
 
     for repoint_num in range(cov_pairs.shape[0]):
-        rp_dict["repoint_start_time"].append(
-            0 if repoint_num == 0 else sce2met_ns(cov_pairs[repoint_num - 1, 1])
-        )
-        rp_dict["repoint_end_time"].append(
-            sce2met_ns(cov_pairs[repoint_num, 0])
-            if repoint_num < cov_pairs.shape[0]
-            else sce2met_ns(cov_pairs[-1, 0]) + 60 * 60 * 1e9
-        )
-        rp_dict["repoint_id"].append(repoint_num)
+        start_et = cov_pairs[repoint_num - 1, 1] if repoint_num > 0 else cov_pairs[0, 0]
+        end_et = cov_pairs[repoint_num, 0]
 
-    rp_dict["repoint_start_time"] = (
-            np.array(rp_dict["repoint_start_time"], dtype=np.float64) * 1e9
-    ).astype(np.uint64)
-    rp_dict["repoint_end_time"] = (
-            np.array(rp_dict["repoint_end_time"], dtype=np.float64) * 1e9
-    ).astype(np.uint64)
-    rp_dict["repoint_id"] = np.array(rp_dict["repoint_id"], dtype=np.uint16)
+        start_met_ns = sce2met_ns(start_et)
+        end_met_ns = sce2met_ns(end_et)
+
+        start_sec = int(start_met_ns // 1e9)
+        start_subsec = int(start_met_ns % 1e9)
+
+        end_sec = int(end_met_ns // 1e9)
+        end_subsec = int(end_met_ns % 1e9)
+
+        start_utc = spiceypy.et2utc(start_et, "ISOC", 6)
+        end_utc = spiceypy.et2utc(end_et, "ISOC", 6)
+
+        rp_dict["repoint_start_sec_sclk"].append(start_sec)
+        rp_dict["repoint_start_subsec_sclk"].append(start_subsec)
+        rp_dict["repoint_end_sec_sclk"].append(end_sec)
+        rp_dict["repoint_end_subsec_sclk"].append(end_subsec)
+        rp_dict["repoint_start_utc"].append(start_utc)
+        rp_dict["repoint_end_utc"].append(end_utc)
+        rp_dict["repoint_id"].append(repoint_num)
 
     rp_df = pd.DataFrame.from_dict(rp_dict)
     return rp_df
