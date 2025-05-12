@@ -11,6 +11,8 @@ matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
 import healpy as hp
 
+from imap_processing.spice.time import sce2met_ns
+
 
 def plot_all_ultra_counts(input_dir: Path, output_dir: Path):
     """
@@ -75,15 +77,16 @@ def get_ck_coverage_pairs(ck_file: Path) -> np.ndarray:
     )
 
     cov_pairs = np.array(ck_cover[:]).reshape((-1, 2))
+    num_intervals = spiceypy.wncard(ck_cover)
 
-    return cov_pairs
+    return cov_pairs, num_intervals
 
 
 def generate_pointing_tables(ck_file: Path):
     """
     Generate pointing table using spice data.
     """
-    cov_pairs = get_ck_coverage_pairs(ck_file)
+    cov_pairs, _ = get_ck_coverage_pairs(ck_file)
     rp_dict = defaultdict(list)
 
     for repoint_num in range(cov_pairs.shape[0]):

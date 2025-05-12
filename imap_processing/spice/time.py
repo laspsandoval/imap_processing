@@ -13,6 +13,8 @@ from imap_processing.spice import IMAP_SC_ID
 from imap_processing.spice.kernels import ensure_spice
 
 TICK_DURATION = 2e-5  # 20 microseconds as defined in imap_sclk_0000.tsc
+TICKS_TO_NS = 1e9 / (5e4)
+SC_ID = -43
 
 # Hard code the J2000 epoch. This allows for CDF epoch to be converted without
 # use of SPICE though it should be noted that this results in a 5-second error
@@ -23,6 +25,13 @@ TICK_DURATION = 2e-5  # 20 microseconds as defined in imap_sclk_0000.tsc
 # >>> spiceypy.et2utc(spiceypy.unitim(0, "TT", "ET"), "ISOC", 9)
 TTJ2000_EPOCH = np.datetime64("2000-01-01T11:58:55.816", "ns")
 
+
+def sce2met_ns(et):
+    """Convert ET to MET ns"""
+    if isinstance(et, Collection):
+        return (np.array([spiceypy.sce2c(SC_ID, t) for t in et]) * TICKS_TO_NS).astype(np.int64)
+    else:
+        return spiceypy.sce2c(SC_ID, et) * TICKS_TO_NS
 
 @typing.no_type_check
 def _vectorize(pyfunc: typing.Callable, **vectorize_kwargs) -> typing.Callable:

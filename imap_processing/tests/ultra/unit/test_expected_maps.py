@@ -1,20 +1,28 @@
 import pytest
 
-from imap_processing.ultra.l1b.expected_maps import get_ck_coverage_pairs
-from imap_processing import imap_module_directory
+from imap_processing.ultra.l1b.expected_maps import get_ck_coverage_pairs, generate_pointing_tables
+from imap_processing.spice.kernels import ensure_spice
 
-@pytest.mark.external_kernel
+
 @pytest.mark.use_test_metakernel("imap_ena_sim_metakernel.template")
-def test_get_ck_coverage_pairs():
+@ensure_spice
+def test_get_ck_coverage_pairs(use_test_metakernel, spice_test_data_path):
     """
     Test the get_ck_coverage_pairs function.
     """
-    ck_file = (
-        imap_module_directory
-        / "tests"
-        / "spice"
-        / "test_data"
-        / "sim_1yr_imap_attitude.bc"
-    )
-    result = get_ck_coverage_pairs(ck_file)
-    print("hi")
+    ck_file = spice_test_data_path / "sim_1yr_imap_attitude.bc"
+    result, num_intervals = get_ck_coverage_pairs(ck_file)
+
+    assert len(result) == num_intervals
+
+
+@pytest.mark.use_test_metakernel("imap_ena_sim_metakernel.template")
+@ensure_spice
+def test_generate_pointing_tables(use_test_metakernel, spice_test_data_path):
+    """
+    Test the get_ck_coverage_pairs function.
+    """
+    ck_file = spice_test_data_path / "sim_1yr_imap_attitude.bc"
+    rp_df = generate_pointing_tables(ck_file)
+
+    print('hi')
