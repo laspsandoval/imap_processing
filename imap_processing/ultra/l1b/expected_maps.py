@@ -123,6 +123,8 @@ def generate_repoint_table(ck_file: Path) -> pd.DataFrame:
 def generate_spin_table(ck_file: Path) -> pd.DataFrame:
     """
     Generate spin table with synthetic 15 second spin periods.
+
+    TODO: use spin_phase in text file to get spins in each pointing.
     """
     cov_pairs, _ = get_ck_coverage_pairs(ck_file)
 
