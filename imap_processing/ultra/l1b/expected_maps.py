@@ -11,9 +11,10 @@ matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
 import healpy as hp
 
-from imap_processing.spice.time import sce2met_ns
+from imap_processing.spice.time import sce2met_ns, et_2_datetime, parse_sclk_str
 
 SC_ID = -43
+TICKS_TO_MS = 1e3 / (5e4)
 
 
 def plot_all_ultra_counts(input_dir: Path, output_dir: Path):
@@ -119,3 +120,53 @@ def generate_repoint_table(ck_file: Path) -> pd.DataFrame:
     return rp_df
 
 
+def generate_spin_table(ck_file: Path) -> pd.DataFrame:
+    """
+    Generate spin table with synthetic 15 second spin periods.
+    """
+    cov_pairs, _ = get_ck_coverage_pairs(ck_file)
+
+    # Full coverage interval
+    start_et = cov_pairs[0, 0]
+    end_et = cov_pairs[-1, 1]
+
+    # Get first and last SCLK
+    _, start_sclk_sec, start_sclk_ticks = parse_sclk_str(spiceypy.sce2s(SC_ID, start_et))
+    _, end_sclk_sec, end_sclk_ticks = parse_sclk_str(spiceypy.sce2s(SC_ID, end_et))
+
+    # Generate synthetic spin start times
+    spin_start_et = np.arange(start_et, end_et, 15)  # Ideal 15 sec spins
+    spin_start_sec = np.arange(start_sclk_sec, end_sclk_sec, 15, dtype=np.uint64)
+
+    spin_dict = dict()
+    spin_dict["spin_number"] = np.arange(spin_start_sec.size, dtype=np.uint64)
+    spin_dict["spin_start_sec_sclk"] = spin_start_sec
+    spin_dict["spin_start_subsec_sclk"] = np.full(
+        spin_start_sec.size, start_sclk_ticks * TICKS_TO_MS, dtype=np.uint64
+    )
+    spin_dict["spin_start_utc"] = np.array(
+        [spiceypy.et2utc(et, "ISOC", prec=6).replace("T", " ") for et in spin_start_et]
+    )
+    spin_dict["spin_period_sec"] = np.full(spin_start_sec.size, 15.0, dtype=np.float64)
+    spin_dict["spin_period_valid"] = np.ones(spin_start_sec.size, dtype=np.uint8)
+    spin_dict["spin_phase_valid"] = np.ones(spin_start_sec.size, dtype=np.uint8)
+    spin_dict["spin_period_source"] = np.zeros(spin_start_sec.size, dtype=np.uint8)
+    spin_dict["thruster_firing"] = np.zeros(spin_start_sec.size, dtype=np.uint8)
+
+    # Add thruster firing flags for repointing intervals
+    for interval in cov_pairs[1:-1]:  # skip first and last interval
+        firing_mask = np.logical_and(
+            spin_start_et + 15 >= interval[0],
+            spin_start_et < interval[1],
+        )
+        spin_dict["thruster_firing"][firing_mask] = 1
+        spin_dict["spin_period_valid"][firing_mask] = 0
+
+    spin_df = pd.DataFrame.from_dict(spin_dict)
+
+    # Add extra fields for plotting etc.
+    spin_df["tdb"] = spin_start_et
+    spin_df["datetime"] = et_2_datetime(spin_start_et)
+    spin_df = spin_df.set_index("datetime")
+
+    return spin_df

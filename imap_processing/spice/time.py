@@ -4,6 +4,7 @@ import typing
 from collections.abc import Collection, Iterable
 from datetime import datetime
 from typing import Union
+import re
 
 import numpy as np
 import numpy.typing as npt
@@ -32,6 +33,38 @@ def sce2met_ns(et):
         return (np.array([spiceypy.sce2c(SC_ID, t) for t in et]) * TICKS_TO_NS).astype(np.int64)
     else:
         return spiceypy.sce2c(SC_ID, et) * TICKS_TO_NS
+
+
+def et_2_datetime(et: Union[float, Collection[float], np.ndarray]) -> Union[datetime, np.ndarray]:
+    """
+    Convert ephemeris time to a python datetime object by first converting it to a UTC timestamp.
+
+    :param et: Union[float, Collection[float], np.ndarray], required, Ephemeris times to be converted.
+    :return: datetime, Object representation of ephemeris times.
+    """
+    isoc_fmt = '%Y-%m-%dT%H:%M:%S.%f'
+    isoc_prec = 6
+
+    isoc_timestamp = spiceypy.et2utc(et, 'ISOC', isoc_prec)
+    if isinstance(et, Collection):
+        return np.array([datetime.strptime(s, isoc_fmt) for s in isoc_timestamp])
+    else:
+        return datetime.strptime(isoc_timestamp, isoc_fmt)
+
+def parse_sclk_str(sclk_str: str) -> (int or None, int, int):
+    """
+    Parse a SCLK string into integer partition, seconds, ticks. Partition prefix is optional and will simply
+    return None for the partition.
+
+    :param sclk_str: str, required, a SCLK string of format `partition/seconds:ticks` or `seconds:ticks`.
+    :return: (int or None, int, int), Partition Seconds Ticks tuple where partition may be None.
+    """
+    pattern = re.compile("^(([0-9][0-9]*)/)?([0-9][0-9]*):([0-9][0-9]*)$")
+    match = pattern.match(sclk_str)
+    if not match:
+        raise ValueError(f"Failed to parse {sclk_str} into Partition, Seconds, Ticks")
+    _, partition, seconds, ticks = match.groups()
+    return int(partition) if partition else None, int(seconds), int(ticks)
 
 @typing.no_type_check
 def _vectorize(pyfunc: typing.Callable, **vectorize_kwargs) -> typing.Callable:
