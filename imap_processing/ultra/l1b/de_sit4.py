@@ -9,29 +9,12 @@ from imap_processing.ultra.l1b.ultra_l1b_annotated import (
     get_annotated_particle_velocity,
 )
 from imap_processing.ultra.l1b.ultra_l1b_extended import (
-    StopType,
-    determine_species,
-    get_coincidence_positions,
-    get_ctof,
     get_de_energy_kev,
     get_de_velocity,
-    get_efficiency,
-    get_energy_pulse_height,
-    get_energy_ssd,
     get_eventtimes,
-    get_front_x_position,
     get_front_y_position,
-    get_fwhm,
-    get_path_length,
-    get_ph_tof_and_back_positions,
-    get_phi_theta,
-    get_ssd_back_position_and_tof_offset,
-    get_ssd_tof,
 )
 from imap_processing.ultra.utils.ultra_l1_utils import create_dataset
-
-FILLVAL_UINT8 = 255
-FILLVAL_FLOAT32 = -1.0e31
 
 
 def calculate_de(de_dataset: xr.Dataset, name: str) -> xr.Dataset:
