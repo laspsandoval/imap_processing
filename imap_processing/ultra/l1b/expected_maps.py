@@ -65,8 +65,8 @@ def read_all_de_files(de_dir: Path) -> pd.DataFrame:
 
     all_de_df = pd.concat(dfs)
     all_de_df = all_de_df.sort_values("tdb").reset_index(drop=True)
-    epoch = np.asarray(sct_to_ttj2000s(met_to_sclkticks(sce2met_ns(all_de_df["tdb"].values))) * 1e9, dtype=np.int64)
-    all_de_df["epoch"] = epoch
+    #epoch = np.asarray(sct_to_ttj2000s(met_to_sclkticks(sce2met_ns(all_de_df["tdb"].values))) * 1e9, dtype=np.int64)
+    #all_de_df["epoch"] = epoch
 
     print(f"Read {len(de_files)} DE files, total rows: {len(all_de_df)}")
     return all_de_df
