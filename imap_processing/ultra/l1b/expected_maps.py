@@ -120,55 +120,31 @@ def generate_repoint_table(ck_file: Path) -> pd.DataFrame:
     return rp_df
 
 
-def generate_spin_table(ck_file: Path) -> pd.DataFrame:
+def assign_spin_numbers(de_df: pd.DataFrame) -> pd.DataFrame:
     """
-    Generate spin table with synthetic 15 second spin periods.
+    Detect spin crossings from spin phase and assign spin numbers to each event.
 
-    TODO: use spin_phase in text file to get spins in each pointing.
+    Parameters
+    ----------
+    de_df : pd.DataFrame
+        DE event dataframe with 'tdb' and 'SpinPhase' columns.
+
+    Returns
+    -------
+    de_df : pd.DataFrame
+        Original dataframe with new 'spin_number' column.
     """
-    cov_pairs, _ = get_ck_coverage_pairs(ck_file)
+    spin_phase = de_df["SpinPhase"].values
+    tdb_times = de_df["tdb"].values
 
-    # Full coverage interval
-    start_et = cov_pairs[0, 0]
-    end_et = cov_pairs[-1, 1]
+    # Detect spin start crossings
+    phase_diff = np.diff(spin_phase)
+    spin_start_indices = np.where(phase_diff < -300)[0] + 1  # spin start at wrap
+    spin_start_tdb = tdb_times[spin_start_indices]
 
-    # Get first and last SCLK
-    _, start_sclk_sec, start_sclk_ticks = parse_sclk_str(spiceypy.sce2s(SC_ID, start_et))
-    _, end_sclk_sec, end_sclk_ticks = parse_sclk_str(spiceypy.sce2s(SC_ID, end_et))
+    # Assign spin numbers to each event
+    spin_numbers = np.searchsorted(spin_start_tdb, tdb_times) - 1
+    spin_numbers = np.clip(spin_numbers, 0, None)  # no negatives
 
-    # Generate synthetic spin start times
-    spin_start_et = np.arange(start_et, end_et, 15)  # Ideal 15 sec spins
-    spin_start_sec = np.arange(start_sclk_sec, end_sclk_sec, 15, dtype=np.uint64)
-
-    spin_dict = dict()
-    spin_dict["spin_number"] = np.arange(spin_start_sec.size, dtype=np.uint64)
-    spin_dict["spin_start_sec_sclk"] = spin_start_sec
-    spin_dict["spin_start_subsec_sclk"] = np.full(
-        spin_start_sec.size, start_sclk_ticks * TICKS_TO_MS, dtype=np.uint64
-    )
-    spin_dict["spin_start_utc"] = np.array(
-        [spiceypy.et2utc(et, "ISOC", prec=6).replace("T", " ") for et in spin_start_et]
-    )
-    spin_dict["spin_period_sec"] = np.full(spin_start_sec.size, 15.0, dtype=np.float64)
-    spin_dict["spin_period_valid"] = np.ones(spin_start_sec.size, dtype=np.uint8)
-    spin_dict["spin_phase_valid"] = np.ones(spin_start_sec.size, dtype=np.uint8)
-    spin_dict["spin_period_source"] = np.zeros(spin_start_sec.size, dtype=np.uint8)
-    spin_dict["thruster_firing"] = np.zeros(spin_start_sec.size, dtype=np.uint8)
-
-    # Add thruster firing flags for repointing intervals
-    for interval in cov_pairs[1:-1]:  # skip first and last interval
-        firing_mask = np.logical_and(
-            spin_start_et + 15 >= interval[0],
-            spin_start_et < interval[1],
-        )
-        spin_dict["thruster_firing"][firing_mask] = 1
-        spin_dict["spin_period_valid"][firing_mask] = 0
-
-    spin_df = pd.DataFrame.from_dict(spin_dict)
-
-    # Add extra fields for plotting etc.
-    spin_df["tdb"] = spin_start_et
-    spin_df["datetime"] = et_2_datetime(spin_start_et)
-    spin_df = spin_df.set_index("datetime")
-
-    return spin_df
+    de_df["spin_number"] = spin_numbers.astype(np.uint64)
+    return de_df
