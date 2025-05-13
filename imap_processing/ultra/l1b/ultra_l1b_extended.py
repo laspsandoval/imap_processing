@@ -448,7 +448,6 @@ def get_coincidence_positions(
 def get_de_velocity(
     front_position: tuple[NDArray, NDArray],
     back_position: tuple[NDArray, NDArray],
-    d: np.ndarray,
     tof: np.ndarray,
 ) -> tuple[NDArray, NDArray, NDArray]:
     """
@@ -460,8 +459,6 @@ def get_de_velocity(
         Front position (xf,yf) (hundredths of a millimeter).
     back_position : tuple
         Back position (xb,yb) (hundredths of a millimeter).
-    d : np.array
-        Distance from slit to foil (hundredths of a millimeter).
     tof : np.array
         Time of flight (tenths of a nanosecond).
 
@@ -478,7 +475,7 @@ def get_de_velocity(
         logger.info("Negative tof values found.")
 
     # distances in .1 mm
-    delta_v = np.empty((len(d), 3), dtype=np.float32)
+    delta_v = np.empty((len(front_position), 3), dtype=np.float32)
     delta_v[:, 0] = (front_position[0] - back_position[0]) * 0.1
     delta_v[:, 1] = (front_position[1] - back_position[1]) * 0.1
     delta_v[:, 2] = d * 0.1

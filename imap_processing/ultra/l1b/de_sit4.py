@@ -51,17 +51,17 @@ def calculate_de(de_dataset: xr.Dataset, name: str) -> xr.Dataset:
     )
 
     xf = de_dataset["start_x"].data
+    yf = de_dataset["PosYSlit"].data
     xb = de_dataset["stop_x"].data
     yb = de_dataset["stop_y"].data
     tof = de_dataset["tof"].data
 
-    d, yf = get_front_y_position(
+    d, _ = get_front_y_position(
         de_dataset["start_type"].data, yb
     )
     v, vhat, r = get_de_velocity(
         (xf, yf),
         (xb, yb),
-        d,
         tof,
     )
     de_dict["direct_event_velocity"] = v.astype(np.float32)
