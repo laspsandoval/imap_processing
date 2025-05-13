@@ -66,6 +66,7 @@ def read_all_de_files(de_dir: Path) -> pd.DataFrame:
     all_de_df = pd.concat(dfs)
     all_de_df = all_de_df.sort_values("tdb").reset_index(drop=True)
     epoch = np.asarray(sct_to_ttj2000s(met_to_sclkticks(sce2met_ns(all_de_df["tdb"].values))) * 1e9, dtype=np.int64)
+    all_de_df["epoch"] = epoch
 
     print(f"Read {len(de_files)} DE files, total rows: {len(all_de_df)}")
     return all_de_df
@@ -176,3 +177,29 @@ def assign_pointing_numbers(de_df: pd.DataFrame, ck_file: Path) -> pd.DataFrame:
     de_df["pointing_number"] = pointing_numbers.astype(np.uint64)
     return de_df
 
+def build_full_de_dataframe(de_dir: Path, ck_file: Path) -> pd.DataFrame:
+    """
+    Read DE files, assign spin and pointing numbers, and return full annotated dataframe.
+
+    Parameters
+    ----------
+    de_dir : Path
+        Directory containing *_DEs.txt files.
+    ck_file : Path
+        Path to SPICE CK file.
+
+    Returns
+    -------
+    de_df : pd.DataFrame
+        Dataframe with DE events and spin_number, pointing_number, epoch.
+    """
+    # Step 1: read raw DE events and calculate epoch
+    de_df = read_all_de_files(de_dir)
+
+    # Step 2: assign spin numbers
+    de_df = assign_spin_numbers(de_df)
+
+    # Step 3: assign pointing numbers
+    de_df = assign_pointing_numbers(de_df, ck_file)
+
+    return de_df
