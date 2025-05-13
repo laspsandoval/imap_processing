@@ -148,3 +148,30 @@ def assign_spin_numbers(de_df: pd.DataFrame) -> pd.DataFrame:
 
     de_df["spin_number"] = spin_numbers.astype(np.uint64)
     return de_df
+
+
+def assign_pointing_numbers(de_df: pd.DataFrame, ck_file: Path) -> pd.DataFrame:
+    """
+    Assign pointing numbers to each event based on CK coverage intervals.
+
+    Parameters
+    ----------
+    de_df : pd.DataFrame
+        DE event dataframe with 'tdb' column.
+    ck_file : Path
+        Path to SPICE CK file.
+
+    Returns
+    -------
+    de_df : pd.DataFrame
+        Dataframe with added 'pointing_number' column.
+    """
+    cov_pairs, _ = get_ck_coverage_pairs(ck_file)
+    pointing_start_et = cov_pairs[:, 0]
+
+    pointing_numbers = np.searchsorted(pointing_start_et, de_df["tdb"].values) - 1
+    pointing_numbers = np.clip(pointing_numbers, 0, None)
+
+    de_df["pointing_number"] = pointing_numbers.astype(np.uint64)
+    return de_df
+
