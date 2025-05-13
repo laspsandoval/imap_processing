@@ -12,6 +12,8 @@ import matplotlib.pyplot as plt
 import healpy as hp
 
 from imap_processing.spice.time import sce2met_ns, met_to_sclkticks, sct_to_ttj2000s
+from imap_processing.spice.time import _vectorize
+
 
 SC_ID = -43
 TICKS_TO_MS = 1e3 / (5e4)
@@ -122,36 +124,6 @@ def generate_repoint_table(ck_file: Path) -> pd.DataFrame:
     return rp_df
 
 
-def assign_spin_numbers(de_df: pd.DataFrame) -> pd.DataFrame:
-    """
-    Detect spin crossings from spin phase and assign spin numbers to each event.
-
-    Parameters
-    ----------
-    de_df : pd.DataFrame
-        DE event dataframe with 'tdb' and 'SpinPhase' columns.
-
-    Returns
-    -------
-    de_df : pd.DataFrame
-        Original dataframe with new 'spin_number' column.
-    """
-    spin_phase = de_df["SpinPhase"].values
-    tdb_times = de_df["tdb"].values
-
-    # Detect spin start crossings
-    phase_diff = np.diff(spin_phase)
-    spin_start_indices = np.where(phase_diff < -300)[0] + 1  # spin start at wrap
-    spin_start_tdb = tdb_times[spin_start_indices]
-
-    # Assign spin numbers to each event
-    spin_numbers = np.searchsorted(spin_start_tdb, tdb_times) - 1
-    spin_numbers = np.clip(spin_numbers, 0, None)  # no negatives
-
-    de_df["spin_number"] = spin_numbers.astype(np.uint64)
-    return de_df
-
-
 def assign_pointing_numbers(de_df: pd.DataFrame, ck_file: Path) -> pd.DataFrame:
     """
     Assign pointing numbers to each event based on CK coverage intervals.
@@ -177,6 +149,25 @@ def assign_pointing_numbers(de_df: pd.DataFrame, ck_file: Path) -> pd.DataFrame:
     de_df["pointing_number"] = pointing_numbers.astype(np.uint64)
     return de_df
 
+def et_to_ttj2000ns(et: np.ndarray) -> np.ndarray:
+    """
+    Convert ephemeris time (ET) seconds to TT J2000 nanoseconds.
+
+    Parameters
+    ----------
+    et : np.ndarray
+        Ephemeris time (ET seconds past J2000).
+
+    Returns
+    -------
+    np.ndarray
+        Terrestrial time nanoseconds since J2000 epoch.
+    """
+    vectorized_unitim = _vectorize(spiceypy.unitim, otypes=[float])
+    tt = vectorized_unitim(et, "ET", "TT")
+    return (tt * 1e9).astype(np.int64)
+
+
 def build_full_de_dataframe(de_dir: Path, ck_file: Path) -> pd.DataFrame:
     """
     Read DE files, assign spin and pointing numbers, and return full annotated dataframe.
@@ -196,10 +187,9 @@ def build_full_de_dataframe(de_dir: Path, ck_file: Path) -> pd.DataFrame:
     # Step 1: read raw DE events and calculate epoch
     de_df = read_all_de_files(de_dir)
 
-    # Step 2: assign spin numbers
-    de_df = assign_spin_numbers(de_df)
-
     # Step 3: assign pointing numbers
     de_df = assign_pointing_numbers(de_df, ck_file)
+
+    de_df["epoch"] = et_to_ttj2000ns(de_df["tdb"].values)
 
     return de_df

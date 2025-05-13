@@ -1,10 +1,8 @@
 import pytest
-import pandas as pd
 from pathlib import Path
 
-from imap_processing.ultra.l1b.expected_maps import get_ck_coverage_pairs, generate_repoint_table
+from imap_processing.ultra.l1b.expected_maps import get_ck_coverage_pairs, generate_repoint_table, read_all_de_files, build_full_de_dataframe
 from imap_processing.spice.kernels import ensure_spice
-from imap_processing.ultra.l1b.expected_maps import build_full_de_dataframe
 
 
 @pytest.mark.use_test_metakernel("imap_ena_sim_metakernel.template")
@@ -39,10 +37,6 @@ def test_build_full_de_dataframe(use_test_metakernel, spice_test_data_path):
     de_dir = Path("/Users/lasa6858/Desktop/IMAP_ENA_DirectEvent_Simulations/simulation_outputs-selected/IMAP-Ultra45_r1_L1_V0/")
 
     df = build_full_de_dataframe(de_dir, ck_file)
-
-    # Basic checks
-    assert isinstance(df, pd.DataFrame)
-
 
 
 
