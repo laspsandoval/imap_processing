@@ -15,6 +15,7 @@ from imap_processing.ultra.l1b.ultra_l1b_extended import (
     get_front_y_position,
 )
 from imap_processing.ultra.utils.ultra_l1_utils import create_dataset
+from imap_processing.spice.time import met_to_ttj2000ns
 
 
 def calculate_de(de_dataset: xr.Dataset, name: str) -> xr.Dataset:

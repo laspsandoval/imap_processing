@@ -11,7 +11,7 @@ matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
 import healpy as hp
 
-from imap_processing.spice.time import sce2met_ns, et_2_datetime, parse_sclk_str
+from imap_processing.spice.time import sce2met_ns, met_to_sclkticks, sct_to_ttj2000s
 
 SC_ID = -43
 TICKS_TO_MS = 1e3 / (5e4)
@@ -65,6 +65,7 @@ def read_all_de_files(de_dir: Path) -> pd.DataFrame:
 
     all_de_df = pd.concat(dfs)
     all_de_df = all_de_df.sort_values("tdb").reset_index(drop=True)
+    epoch = np.asarray(sct_to_ttj2000s(met_to_sclkticks(sce2met_ns(all_de_df["tdb"].values))) * 1e9, dtype=np.int64)
 
     print(f"Read {len(de_files)} DE files, total rows: {len(all_de_df)}")
     return all_de_df
