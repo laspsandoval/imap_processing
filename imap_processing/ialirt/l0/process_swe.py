@@ -442,7 +442,7 @@ def polar_check_counterstreaming(
     return bde_second_search
 
 
-def process_swe(accumulated_data: xr.Dataset, in_flight_cal_files: list) -> list[dict]:
+def process_swe(accumulated_data: xr.Dataset) -> list[dict]:
     """
     Create L1 data dictionary.
 
